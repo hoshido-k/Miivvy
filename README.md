@@ -24,6 +24,7 @@ AI（OpenAI APIなど）が自動的に解析・要約して「不正操作の�
 
 ## 🌐 アプリ構成イメージ
 
+'''
 📱 iPhone（ユーザー端末）
 │
 ├── Mimamory アプリ（Flutter or Swift）
@@ -43,14 +44,13 @@ AI（OpenAI APIなど）が自動的に解析・要約して「不正操作の�
     ├── /logs → 操作履歴取得
     ├── /auth → ユーザー認証（JWT / OAuth）
     └── データベース（PostgreSQL / SQLite）
-
-yaml
-コードをコピーする
+'''
 
 ---
 
 ## ⚙️ システム構成ツリー
 
+'''
 Miivvy/
 ├── backend/
 │   ├── app.py # Flaskメインアプリ
@@ -96,9 +96,7 @@ Miivvy/
 │
 └── README.md
 
-
-yaml
-コードをコピーする
+'''
 
 ---
 
