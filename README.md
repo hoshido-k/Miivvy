@@ -24,7 +24,7 @@ AI（OpenAI APIなど）が自動的に解析・要約して「不正操作の�
 
 ## 🌐 アプリ構成イメージ
 
-'''
+'''tree
 📱 iPhone（ユーザー端末）
 │
 ├── Mimamory アプリ（Flutter or Swift）
@@ -50,7 +50,7 @@ AI（OpenAI APIなど）が自動的に解析・要約して「不正操作の�
 
 ## ⚙️ システム構成ツリー
 
-'''
+'''tree
 Miivvy/
 ├── backend/
 │   ├── app.py # Flaskメインアプリ
