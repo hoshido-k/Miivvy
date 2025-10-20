@@ -1,0 +1,24 @@
+[project]
+name = "miivvy-backend"
+version = "0.1.0"
+description = "Miivvy Backend - AI-powered app monitoring and analysis API"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.0.0",
+    "flask-cors>=4.0.0",
+    "python-dotenv>=1.0.0",
+    "openai>=1.0.0",
+    "sqlalchemy>=2.0.0",
+    "psycopg2-binary>=2.9.0",
+    "pyjwt>=2.8.0",
+    "bcrypt>=4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.5.0",
+]
