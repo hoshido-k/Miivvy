@@ -2,43 +2,50 @@
 Logs endpoint for retrieving app usage history
 """
 from flask import Blueprint, request, jsonify
+from middleware.auth_middleware import require_auth
+from firebase.firestore_helper import FirestoreHelper
 
 logs_bp = Blueprint('logs', __name__)
+firestore = FirestoreHelper()
 
 @logs_bp.route('/logs', methods=['GET'])
+@require_auth
 def get_logs():
     """
-    Retrieve app usage logs for a user
+    Retrieve app usage logs for authenticated user
 
     Query parameters:
-    - user_id: string (required)
     - start_date: ISO8601 string (optional)
     - end_date: ISO8601 string (optional)
     - app_name: string (optional) - filter by specific app
-    - limit: integer (optional) - number of records to return
+    - limit: integer (optional) - number of records to return (default: 100)
+
+    Headers:
+    - Authorization: Bearer <firebase_id_token>
     """
     try:
-        user_id = request.args.get('user_id')
+        # User ID is extracted from the Firebase token by @require_auth
+        user_id = request.user_id
 
-        if not user_id:
-            return jsonify({
-                'error': 'Missing user_id parameter'
-            }), 400
+        # Get query parameters
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        app_name = request.args.get('app_name')
+        limit = int(request.args.get('limit', 100))
 
-        # TODO: Fetch logs from database with filters
-        # logs = log_service.get_logs(
-        #     user_id=user_id,
-        #     start_date=request.args.get('start_date'),
-        #     end_date=request.args.get('end_date'),
-        #     app_name=request.args.get('app_name'),
-        #     limit=request.args.get('limit', 100)
-        # )
+        # Fetch logs from Firestore
+        logs = firestore.get_logs(
+            user_id=user_id,
+            start_date=start_date,
+            end_date=end_date,
+            app_name=app_name,
+            limit=limit
+        )
 
-        # Mock response for now
         return jsonify({
             'status': 'success',
-            'logs': [],
-            'count': 0
+            'logs': logs,
+            'count': len(logs)
         }), 200
 
     except Exception as e:

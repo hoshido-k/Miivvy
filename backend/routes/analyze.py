@@ -2,46 +2,62 @@
 AI Analysis endpoint for analyzing app usage patterns
 """
 from flask import Blueprint, request, jsonify
+from middleware.auth_middleware import require_auth
+from firebase.firestore_helper import FirestoreHelper
 
 analyze_bp = Blueprint('analyze', __name__)
+firestore = FirestoreHelper()
 
 @analyze_bp.route('/analyze', methods=['POST'])
+@require_auth
 def analyze_logs():
     """
-    Analyze app usage logs using AI
+    Analyze app usage logs using AI for authenticated user
 
-    Expected payload:
+    Expected payload (optional):
     {
-        "user_id": "string",
         "time_range": {
             "start": "ISO8601 string",
             "end": "ISO8601 string"
         }
     }
+
+    Headers:
+    - Authorization: Bearer <firebase_id_token>
     """
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
+        user_id = request.user_id
 
-        # Validate required fields
-        if 'user_id' not in data:
-            return jsonify({
-                'error': 'Missing user_id'
-            }), 400
+        # Get time range if provided
+        time_range = data.get('time_range', {})
+        start_date = time_range.get('start')
+        end_date = time_range.get('end')
 
-        # TODO: Fetch logs from database
-        # logs = log_service.get_logs(data['user_id'], data.get('time_range'))
+        # Fetch logs from Firestore
+        logs = firestore.get_logs(
+            user_id=user_id,
+            start_date=start_date,
+            end_date=end_date,
+            limit=100
+        )
 
-        # TODO: Analyze with AI
-        # analysis = ai_service.analyze_behavior(logs)
+        # TODO: Implement AI analysis with OpenAI API
+        # For now, return basic analysis
+        analysis_result = {
+            'suspicious_activity': False,
+            'summary': f'Analyzed {len(logs)} events. No unusual activity detected.',
+            'details': [],
+            'log_count': len(logs)
+        }
 
-        # Mock response for now
+        # Save analysis result to Firestore
+        analysis_id = firestore.save_analysis(user_id, analysis_result)
+
         return jsonify({
             'status': 'success',
-            'analysis': {
-                'suspicious_activity': False,
-                'summary': 'No unusual activity detected',
-                'details': []
-            }
+            'analysis': analysis_result,
+            'analysis_id': analysis_id
         }), 200
 
     except Exception as e:

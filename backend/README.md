@@ -1,6 +1,6 @@
 # Miivvy Backend
 
-Miivvy バックエンドAPI - AI搭載のアプリ監視・分析システム
+Miivvy バックエンドAPI - Firebase + AI搭載のアプリ監視・分析システム
 
 ## セットアップ
 
@@ -8,6 +8,7 @@ Miivvy バックエンドAPI - AI搭載のアプリ監視・分析システム
 
 - Python 3.12+
 - uv (高速パッケージマネージャー)
+- Firebase プロジェクト
 
 ### インストール
 
@@ -17,14 +18,23 @@ Miivvy バックエンドAPI - AI搭載のアプリ監視・分析システム
 uv sync
 ```
 
-2. 環境変数を設定:
+2. Firebase設定:
+
+Firebaseコンソールから`serviceAccountKey.json`をダウンロードし、`backend/`ディレクトリに配置します。
+
+```bash
+# Firebaseコンソール → プロジェクト設定 → サービスアカウント
+# 「新しい秘密鍵の生成」からダウンロード
+```
+
+3. 環境変数を設定:
 
 ```bash
 cp .env.example .env
-# .envファイルを編集して、必要なAPIキーと設定を追加
+# .envファイルを編集して設定
 ```
 
-3. サーバーを起動:
+4. サーバーを起動:
 
 ```bash
 uv run python app.py
@@ -38,45 +48,88 @@ uv run python app.py
 ```
 GET /
 ```
+サーバー状態確認
 
-### Webhook
+### Webhook (認証不要)
 ```
 POST /api/webhook
+Content-Type: application/json
+
+{
+  "user_id": "string",
+  "app_name": "LINE",
+  "event_type": "opened",
+  "timestamp": "2025-01-20T12:00:00Z"  // optional
+}
 ```
 iOS Shortcutsからアプリ使用イベントを受信
 
-### Logs
+### Logs (認証必要)
 ```
-GET /api/logs?user_id=xxx
+GET /api/logs?start_date=xxx&end_date=xxx&app_name=LINE&limit=100
+Authorization: Bearer <firebase_id_token>
 ```
-ユーザーのアプリ使用履歴を取得
+認証ユーザーのアプリ使用履歴を取得
 
-### Analyze
+### Analyze (認証必要)
 ```
 POST /api/analyze
+Authorization: Bearer <firebase_id_token>
+Content-Type: application/json
+
+{
+  "time_range": {
+    "start": "2025-01-01T00:00:00Z",
+    "end": "2025-01-20T23:59:59Z"
+  }
+}
 ```
 AIを使用してアプリ使用パターンを分析
 
-### Authentication
+## 認証について
+
+- クライアント（Flutter）側でFirebase Authenticationを使用してログイン
+- 取得したID tokenを`Authorization: Bearer <token>`ヘッダーに含めてリクエスト
+- バックエンドはトークンを検証し、`user_id`を抽出
+
+## Firestore データ構造
+
 ```
-POST /api/auth/register  # ユーザー登録
-POST /api/auth/login     # ログイン
+/logs/{log_id}
+  - user_id: string
+  - app_name: string
+  - event_type: string
+  - timestamp: string
+  - created_at: timestamp
+
+/analyses/{analysis_id}
+  - user_id: string
+  - suspicious_activity: boolean
+  - summary: string
+  - details: array
+  - created_at: timestamp
+
+/user_settings/{user_id}
+  - settings: map
+  - updated_at: timestamp
 ```
 
 ## プロジェクト構造
 
 ```
 backend/
-├── app.py              # メインアプリケーション
-├── routes/             # APIエンドポイント
-│   ├── webhook.py      # イベント受信
-│   ├── analyze.py      # AI分析
-│   ├── logs.py         # ログ取得
-│   └── auth.py         # 認証
-├── services/           # ビジネスロジック
-├── models/             # データモデル
-├── database/           # DB設定
-└── pyproject.toml      # 依存関係管理
+├── app.py                      # メインアプリケーション
+├── firebase/
+│   ├── config.py               # Firebase初期化
+│   └── firestore_helper.py     # Firestoreヘルパー
+├── middleware/
+│   └── auth_middleware.py      # 認証ミドルウェア
+├── routes/
+│   ├── webhook.py              # イベント受信
+│   ├── analyze.py              # AI分析
+│   └── logs.py                 # ログ取得
+├── services/                   # ビジネスロジック
+└── pyproject.toml              # 依存関係管理
 ```
 
 ## 開発
@@ -102,7 +155,7 @@ uv run black .
 ## 技術スタック
 
 - Flask 3.0+ - Webフレームワーク
-- SQLAlchemy 2.0+ - ORM
+- Firebase Admin SDK 6.5+ - Firebase連携
+- Cloud Firestore - NoSQLデータベース
+- Firebase Authentication - 認証
 - OpenAI API - AI分析
-- PostgreSQL/SQLite - データベース
-- JWT - 認証

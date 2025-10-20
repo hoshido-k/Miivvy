@@ -2,9 +2,11 @@
 Webhook endpoint for receiving app usage events from iOS Shortcuts
 """
 from flask import Blueprint, request, jsonify
-from datetime import datetime
+from datetime import datetime, timezone
+from firebase.firestore_helper import FirestoreHelper
 
 webhook_bp = Blueprint('webhook', __name__)
+firestore = FirestoreHelper()
 
 @webhook_bp.route('/webhook', methods=['POST'])
 def receive_event():
@@ -16,7 +18,7 @@ def receive_event():
         "user_id": "string",
         "app_name": "string",
         "event_type": "opened|closed|notification",
-        "timestamp": "ISO8601 string"
+        "timestamp": "ISO8601 string" (optional)
     }
     """
     try:
@@ -32,15 +34,15 @@ def receive_event():
 
         # Add server timestamp if not provided
         if 'timestamp' not in data:
-            data['timestamp'] = datetime.utcnow().isoformat()
+            data['timestamp'] = datetime.now(timezone.utc).isoformat()
 
-        # TODO: Save to database
-        # log_service.save_event(data)
+        # Save to Firestore
+        event_id = firestore.save_log(data)
 
         return jsonify({
             'status': 'success',
-            'message': 'Event received',
-            'event_id': None  # TODO: Return actual event ID after saving
+            'message': 'Event received and saved',
+            'event_id': event_id
         }), 201
 
     except Exception as e:

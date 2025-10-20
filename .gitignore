@@ -69,6 +69,10 @@ instance/
 *.db
 miivvy.db
 
+# Firebase credentials
+serviceAccountKey.json
+*-firebase-adminsdk-*.json
+
 # Scrapy stuff:
 .scrapy
 

@@ -28,7 +28,7 @@ AI（OpenAI APIなど）が自動的に解析・要約して「不正操作の�
 
 📱 iPhone（ユーザー端末）
 │
-├── Mimamory アプリ（Flutter or Swift）
+├── frontend（Flutter or Swift）
 │   ├── 設定UI（対象アプリ選択・ON/OFF）
 │   ├── 状態表示（Yes/No + AI要約）
 │   ├── ログ履歴（一覧・時刻・操作タイプ）
@@ -39,7 +39,7 @@ AI（OpenAI APIなど）が自動的に解析・要約して「不正操作の�
 │   ├── アプリ起動トリガー（例：LINEが開かれたとき）
 │   └── Webhook送信（MimamoryサーバへPOST）
 │
-└── Miivvy バックエンド（Flask / FastAPI）
+└── backend（Flask / FastAPI）
     ├── /webhook → イベント受信・保存
     ├── /analyze → AIによる操作解析
     ├── /logs → 操作履歴取得
