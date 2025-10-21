@@ -33,10 +33,12 @@ def create_app():
     from routes.webhook import webhook_bp
     from routes.analyze import analyze_bp
     from routes.logs import logs_bp
+    from routes.shortcuts import shortcuts_bp
 
     app.register_blueprint(webhook_bp, url_prefix='/api')
     app.register_blueprint(analyze_bp, url_prefix='/api')
     app.register_blueprint(logs_bp, url_prefix='/api')
+    app.register_blueprint(shortcuts_bp, url_prefix='/api')
 
     # Health check endpoint
     @app.route('/')

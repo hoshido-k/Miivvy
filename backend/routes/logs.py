@@ -6,7 +6,19 @@ from middleware.auth_middleware import require_auth
 from firebase.firestore_helper import FirestoreHelper
 
 logs_bp = Blueprint('logs', __name__)
-firestore = FirestoreHelper()
+firestore = None  # 遅延初期化
+
+def get_firestore():
+    """Firestoreヘルパーの遅延初期化"""
+    global firestore
+    if firestore is None:
+        try:
+            from firebase.firestore_helper import FirestoreHelper
+            firestore = FirestoreHelper()
+        except Exception as e:
+            print(f"Warning: Firestore initialization failed: {e}")
+            firestore = None
+    return firestore
 
 @logs_bp.route('/logs', methods=['GET'])
 @require_auth
@@ -34,13 +46,18 @@ def get_logs():
         limit = int(request.args.get('limit', 100))
 
         # Fetch logs from Firestore
-        logs = firestore.get_logs(
-            user_id=user_id,
-            start_date=start_date,
-            end_date=end_date,
-            app_name=app_name,
-            limit=limit
-        )
+        fs = get_firestore()
+        if fs:
+            logs = fs.get_logs(
+                user_id=user_id,
+                start_date=start_date,
+                end_date=end_date,
+                app_name=app_name,
+                limit=limit
+            )
+        else:
+            # Firestoreが利用できない場合
+            logs = []
 
         return jsonify({
             'status': 'success',

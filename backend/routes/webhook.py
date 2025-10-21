@@ -3,10 +3,21 @@ Webhook endpoint for receiving app usage events from iOS Shortcuts
 """
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timezone
-from firebase.firestore_helper import FirestoreHelper
 
 webhook_bp = Blueprint('webhook', __name__)
-firestore = FirestoreHelper()
+firestore = None  # 遅延初期化
+
+def get_firestore():
+    """Firestoreヘルパーの遅延初期化"""
+    global firestore
+    if firestore is None:
+        try:
+            from firebase.firestore_helper import FirestoreHelper
+            firestore = FirestoreHelper()
+        except Exception as e:
+            print(f"Warning: Firestore initialization failed: {e}")
+            firestore = None
+    return firestore
 
 @webhook_bp.route('/webhook', methods=['POST'])
 def receive_event():
@@ -37,7 +48,13 @@ def receive_event():
             data['timestamp'] = datetime.now(timezone.utc).isoformat()
 
         # Save to Firestore
-        event_id = firestore.save_log(data)
+        fs = get_firestore()
+        if fs:
+            event_id = fs.save_log(data)
+        else:
+            # Firestoreが利用できない場合はログのみ
+            print(f"Event received (Firestore unavailable): {data}")
+            event_id = "firestore_unavailable"
 
         return jsonify({
             'status': 'success',
