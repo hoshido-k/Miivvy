@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/monitored_app.dart';
 import '../services/preferences_service.dart';
-import 'shortcut_guide_screen.dart';
+import 'shortcut_setup_screen.dart';
 
 class AddAppScreen extends StatefulWidget {
   final List<MonitoredApp> currentApps;
@@ -38,19 +38,19 @@ class _AddAppScreenState extends State<AddAppScreen> {
     // 許可確認ダイアログを表示
     final confirmed = await _showPermissionDialog(app);
 
-    if (confirmed == true) {
-      // アプリを追加
-      final prefs = await PreferencesService.getInstance();
-      final success = await prefs.addApp(app);
+    if (confirmed == true && mounted) {
+      // ショートカット設定フローを開始（アプリの追加は設定完了後）
+      final setupCompleted = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => ShortcutSetupScreen(app: app),
+        ),
+      );
 
-      if (success && mounted) {
-        // ショートカット設定ガイドを表示
-        await Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ShortcutGuideScreen(app: app),
-          ),
-        );
+      // ショートカット設定が完了した場合のみアプリを追加
+      if (setupCompleted == true && mounted) {
+        final prefs = await PreferencesService.getInstance();
+        await prefs.addApp(app);
 
         // 画面を閉じる
         if (mounted) {

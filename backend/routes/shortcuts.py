@@ -5,7 +5,6 @@ LINE用のiOSショートカットを自動生成するエンドポイント
 from flask import Blueprint, jsonify, request, send_file
 import plistlib
 import io
-import base64
 from datetime import datetime
 
 shortcuts_bp = Blueprint('shortcuts', __name__)
@@ -191,6 +190,51 @@ def generate_shortcut():
                 'message': 'Currently only LINE is supported',
                 'supported_apps': ['line']
             }), 400
+
+        # ショートカット生成
+        shortcut_bytes = generate_line_shortcut(user_id, webhook_url)
+
+        # BytesIOに変換してファイルとして返す
+        shortcut_file = io.BytesIO(shortcut_bytes)
+        shortcut_file.seek(0)
+
+        # ファイル名を生成
+        filename = f'Miivvy_LINE_{user_id}_{datetime.now().strftime("%Y%m%d")}.shortcut'
+
+        return send_file(
+            shortcut_file,
+            mimetype='application/x-plist',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to generate shortcut',
+            'message': str(e)
+        }), 500
+
+
+@shortcuts_bp.route('/shortcuts/download/<app_id>/<user_id>', methods=['GET'])
+def download_shortcut(app_id: str, user_id: str):
+    """
+    GET /api/shortcuts/download/<app_id>/<user_id>
+
+    ショートカットファイルをダウンロード（Safari経由で開くためのGETエンドポイント）
+    """
+    try:
+        # 現在はLINEのみサポート
+        if app_id != 'line':
+            return jsonify({
+                'error': 'Unsupported app',
+                'message': 'Currently only LINE is supported',
+                'supported_apps': ['line']
+            }), 400
+
+        # Webhook URLを構築（環境変数から取得、なければデフォルト）
+        import os
+        base_url = os.getenv('API_BASE_URL', 'http://127.0.0.1:5001')
+        webhook_url = f'{base_url}/api/webhook'
 
         # ショートカット生成
         shortcut_bytes = generate_line_shortcut(user_id, webhook_url)

@@ -24,6 +24,9 @@ dependencies:
   # Shared Preferences for storing app settings
   shared_preferences: ^2.3.4
 
+  # URL launcher for opening Safari
+  url_launcher: ^6.2.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
