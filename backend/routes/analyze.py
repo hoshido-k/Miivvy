@@ -6,7 +6,19 @@ from middleware.auth_middleware import require_auth
 from firebase.firestore_helper import FirestoreHelper
 
 analyze_bp = Blueprint('analyze', __name__)
-firestore = FirestoreHelper()
+firestore = None  # 遅延初期化
+
+def get_firestore():
+    """Firestoreヘルパーの遅延初期化"""
+    global firestore
+    if firestore is None:
+        try:
+            from firebase.firestore_helper import FirestoreHelper
+            firestore = FirestoreHelper()
+        except Exception as e:
+            print(f"Warning: Firestore initialization failed: {e}")
+            firestore = None
+    return firestore
 
 @analyze_bp.route('/analyze', methods=['POST'])
 @require_auth
@@ -35,12 +47,17 @@ def analyze_logs():
         end_date = time_range.get('end')
 
         # Fetch logs from Firestore
-        logs = firestore.get_logs(
-            user_id=user_id,
-            start_date=start_date,
-            end_date=end_date,
-            limit=100
-        )
+        fs = get_firestore()
+        if fs:
+            logs = fs.get_logs(
+                user_id=user_id,
+                start_date=start_date,
+                end_date=end_date,
+                limit=100
+            )
+        else:
+            # Firestoreが利用できない場合
+            logs = []
 
         # TODO: Implement AI analysis with OpenAI API
         # For now, return basic analysis
@@ -52,7 +69,10 @@ def analyze_logs():
         }
 
         # Save analysis result to Firestore
-        analysis_id = firestore.save_analysis(user_id, analysis_result)
+        if fs:
+            analysis_id = fs.save_analysis(user_id, analysis_result)
+        else:
+            analysis_id = "firestore_unavailable"
 
         return jsonify({
             'status': 'success',
