@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# UV
+.uv/
+
+# Tests
+tests/
+*.test.py
+pytest_cache/
+.pytest_cache/
+
+# Environment
+.env
+.env.local
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# macOS
+.DS_Store
+
+# Development
+README.md
+*.md
+
+# Firebase credentials (will be set via environment variables)
+serviceAccountKey.json
+*credentials*.json
