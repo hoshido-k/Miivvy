@@ -21,6 +21,9 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # Shared Preferences for storing app settings
+  shared_preferences: ^2.3.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
