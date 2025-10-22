@@ -1,0 +1,29 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Miivvy
+//
+// Directory structure:
+// shortcuts/{user_id}/{app_id}/filename.shortcut
+//
+// This allows public read access to shortcut files so that
+// iOS devices can download them via Safari
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Shortcut files: Public read, server-only write
+    // Users can download their shortcuts via Safari
+    match /shortcuts/{user_id}/{app_id}/{fileName} {
+      // Anyone can read (download) shortcut files
+      allow read: if true;
+
+      // Only server (Firebase Admin SDK) can write
+      allow write: if false;
+    }
+
+    // Default: Deny all access to other paths
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

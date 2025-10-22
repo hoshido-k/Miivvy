@@ -27,6 +27,9 @@ dependencies:
   # URL launcher for opening Safari
   url_launcher: ^6.2.5
 
+  # HTTP client for API requests
+  http: ^1.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
