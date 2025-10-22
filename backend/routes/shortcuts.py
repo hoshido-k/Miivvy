@@ -5,7 +5,9 @@ LINE用のiOSショートカットを自動生成するエンドポイント
 from flask import Blueprint, jsonify, request, send_file
 import plistlib
 import io
-from datetime import datetime
+import base64
+from datetime import datetime, timedelta
+from firebase.config import get_storage_bucket
 
 shortcuts_bp = Blueprint('shortcuts', __name__)
 
@@ -215,6 +217,45 @@ def generate_shortcut():
         }), 500
 
 
+@shortcuts_bp.route('/shortcuts/base64/<app_id>/<user_id>', methods=['GET'])
+def get_shortcut_base64(app_id: str, user_id: str):
+    """
+    GET /api/shortcuts/base64/<app_id>/<user_id>
+
+    ショートカットファイルをbase64エンコードして返す（iOSのURLスキーム用）
+    """
+    try:
+        # 現在はLINEのみサポート
+        if app_id != 'line':
+            return jsonify({
+                'error': 'Unsupported app',
+                'message': 'Currently only LINE is supported',
+                'supported_apps': ['line']
+            }), 400
+
+        # Webhook URLを構築
+        import os
+        base_url = os.getenv('API_BASE_URL', 'https://miivvy-api-226418271049.asia-northeast1.run.app')
+        webhook_url = f'{base_url}/api/webhook'
+
+        # ショートカット生成
+        shortcut_bytes = generate_line_shortcut(user_id, webhook_url)
+
+        # base64エンコード
+        shortcut_base64 = base64.b64encode(shortcut_bytes).decode('utf-8')
+
+        return jsonify({
+            'data': shortcut_base64,
+            'name': f'Miivvy_LINE_{user_id}'
+        })
+
+    except Exception as e:
+        return jsonify({
+            'error': 'Failed to generate shortcut',
+            'message': str(e)
+        }), 500
+
+
 @shortcuts_bp.route('/shortcuts/download/<app_id>/<user_id>', methods=['GET'])
 def download_shortcut(app_id: str, user_id: str):
     """
@@ -233,7 +274,7 @@ def download_shortcut(app_id: str, user_id: str):
 
         # Webhook URLを構築（環境変数から取得、なければデフォルト）
         import os
-        base_url = os.getenv('API_BASE_URL', 'http://127.0.0.1:5001')
+        base_url = os.getenv('API_BASE_URL', 'http://127.0.0.1:5002')
         webhook_url = f'{base_url}/api/webhook'
 
         # ショートカット生成
@@ -291,3 +332,65 @@ def get_shortcut_info(app_id: str):
         }), 404
 
     return jsonify(shortcut_info[app_id])
+
+
+@shortcuts_bp.route('/shortcuts/url/<app_id>/<user_id>', methods=['GET'])
+def get_shortcut_url(app_id: str, user_id: str):
+    """
+    GET /api/shortcuts/url/<app_id>/<user_id>
+
+    Firebase Storageにショートカットファイルをアップロードし、
+    公開URLを返す（iOSで直接開けるURL）
+    """
+    try:
+        # 現在はLINEのみサポート
+        if app_id != 'line':
+            return jsonify({
+                'error': 'Unsupported app',
+                'message': 'Currently only LINE is supported',
+                'supported_apps': ['line']
+            }), 400
+
+        # Webhook URLを構築
+        import os
+        base_url = os.getenv('API_BASE_URL', 'https://miivvy-api-226418271049.asia-northeast1.run.app')
+        webhook_url = f'{base_url}/api/webhook'
+
+        # ショートカット生成
+        shortcut_bytes = generate_line_shortcut(user_id, webhook_url)
+
+        # Firebase Storageにアップロード
+        # Directory structure: shortcuts/{user_id}/{app_id}/filename
+        # This makes it easier to manage shortcuts per user
+        bucket = get_storage_bucket()
+        filename = f'shortcuts/{user_id}/{app_id}/Miivvy_{app_id.upper()}_{user_id}.shortcut'
+        blob = bucket.blob(filename)
+
+        # Content-Typeを設定
+        blob.upload_from_string(
+            shortcut_bytes,
+            content_type='application/x-plist'
+        )
+
+        # 公開URLを取得（7日間有効な署名付きURL）
+        url = blob.generate_signed_url(
+            version='v4',
+            expiration=timedelta(days=7),
+            method='GET'
+        )
+
+        return jsonify({
+            'url': url,
+            'name': f'Miivvy_LINE_{user_id}',
+            'expires_in_days': 7,
+            'message': 'このURLをSafariで開いてください'
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"Error generating shortcut URL: {e}")
+        print(traceback.format_exc())
+        return jsonify({
+            'error': 'Failed to generate shortcut URL',
+            'message': str(e)
+        }), 500

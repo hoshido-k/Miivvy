@@ -1,54 +1,92 @@
 import 'package:url_launcher/url_launcher.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class ShortcutService {
   // Environment configuration
-  static const bool isDevelopment = false; // IMPORTANT: Must be false for shortcuts to work (HTTPS required)
+  // Set to true for local development (simulator/emulator only)
+  // Must be false for real device testing (HTTPS required for shortcuts)
+  static const bool isDevelopment = true;
 
   // Backend URLs
   static const String productionUrl =
       'https://miivvy-api-226418271049.asia-northeast1.run.app';
-  static const String developmentUrl = 'http://127.0.0.1:5001';
+  static const String developmentUrl = 'http://127.0.0.1:5002';
 
   // Active URL based on environment
   static String get baseUrl => isDevelopment ? developmentUrl : productionUrl;
 
-  /// Get shortcut download URL
+  /// Fetch shortcut URL from backend
   ///
-  /// Returns the download URL for the shortcut file
-  static String getShortcutDownloadUrl({
+  /// This will generate a Firebase Storage URL that can be opened in Safari
+  static Future<Map<String, dynamic>?> fetchShortcutUrl({
     required String appId,
     required String userId,
-  }) {
-    return '$baseUrl/api/shortcuts/download/$appId/$userId';
+  }) async {
+    try {
+      final url = '$baseUrl/api/shortcuts/url/$appId/$userId';
+      print('Fetching shortcut URL from: $url');
+
+      final response = await http.get(Uri.parse(url));
+
+      print('Response status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        return data;
+      } else {
+        print('Failed to fetch shortcut URL: ${response.body}');
+        return null;
+      }
+    } catch (e) {
+      print('Error fetching shortcut URL: $e');
+      return null;
+    }
   }
 
-  /// Open Shortcuts app to import the shortcut directly from HTTPS URL
+  /// Get shortcut URL and open it in Safari
   ///
-  /// Uses the shortcuts:// URL scheme with import-shortcut parameter
-  static Future<bool> installShortcut(String downloadUrl) async {
+  /// This will get a Firebase Storage URL and open it in Safari,
+  /// which will then prompt the user to add it to the Shortcuts app
+  static Future<bool> installShortcut({
+    required String appId,
+    required String userId,
+  }) async {
     try {
-      print('Opening Shortcuts app to import: $downloadUrl');
+      print('Fetching shortcut URL for $appId...');
 
-      // Use the shortcuts:// URL scheme to import directly from HTTPS URL
-      // This bypasses the "unsigned shortcut" error
-      final shortcutsUri = Uri.parse('shortcuts://import-shortcut?url=${Uri.encodeComponent(downloadUrl)}');
+      // Fetch the shortcut URL from backend
+      final data = await fetchShortcutUrl(
+        appId: appId,
+        userId: userId,
+      );
 
-      print('Shortcuts URL: $shortcutsUri');
+      if (data == null || data['url'] == null) {
+        print('Failed to fetch shortcut URL');
+        throw Exception('ショートカットの準備に失敗しました。ネットワーク接続を確認してください。');
+      }
 
-      if (await canLaunchUrl(shortcutsUri)) {
+      final shortcutUrl = data['url'] as String;
+      print('Got shortcut URL: $shortcutUrl');
+
+      // Open the URL in Safari
+      // Safari will download the .shortcut file and automatically offer to import it
+      final uri = Uri.parse(shortcutUrl);
+
+      if (await canLaunchUrl(uri)) {
         final success = await launchUrl(
-          shortcutsUri,
-          mode: LaunchMode.externalApplication,
+          uri,
+          mode: LaunchMode.externalApplication, // Opens in Safari
         );
-        print('Shortcuts app launch success: $success');
+        print('Safari launch success: $success');
         return success;
       } else {
-        print('Cannot launch shortcuts URL scheme');
-        return false;
+        print('Cannot launch shortcut URL');
+        throw Exception('ブラウザを開けませんでした。もう一度お試しください。');
       }
     } catch (e) {
       print('Error installing shortcut: $e');
-      return false;
+      rethrow;
     }
   }
 

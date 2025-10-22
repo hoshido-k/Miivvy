@@ -14,7 +14,8 @@ class ShortcutSetupScreen extends StatefulWidget {
 
 class _ShortcutSetupScreenState extends State<ShortcutSetupScreen> {
   int _currentStep = 0;
-  String? _downloadUrl;
+  bool _isLoading = false;
+  String? _errorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -192,37 +193,106 @@ class _ShortcutSetupScreenState extends State<ShortcutSetupScreen> {
 
                 _buildInstructionCard(
                   step: '1',
-                  title: '「ショートカットアプリを開く」をタップ',
-                  description: 'ショートカットアプリが自動的に開きます',
+                  title: '「ショートカットをダウンロード」をタップ',
+                  description: 'Safariが開き、ショートカットファイルがダウンロードされます',
                 ),
 
                 const SizedBox(height: 16),
 
                 _buildInstructionCard(
                   step: '2',
-                  title: '「ショートカットを追加」をタップ',
-                  description: 'ショートカットアプリに追加されます',
+                  title: 'ダウンロードバナーをタップ',
+                  description: 'Safari上部のダウンロードアイコン、または下部のダウンロードバナーをタップ',
                 ),
 
                 const SizedBox(height: 16),
 
                 _buildInstructionCard(
                   step: '3',
+                  title: '「ショートカットを追加」をタップ',
+                  description: 'ショートカットアプリが開き、追加ボタンが表示されます',
+                ),
+
+                const SizedBox(height: 16),
+
+                _buildInstructionCard(
+                  step: '4',
                   title: 'このアプリに戻る',
                   description: 'Miivvyアプリに戻ってきてください',
                 ),
 
                 const SizedBox(height: 32),
 
+                // Error message display
+                if (_errorMessage != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error_outline, color: Colors.red.shade700),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: TextStyle(
+                              color: Colors.red.shade900,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton.icon(
-                    onPressed: () async {
-                      await ShortcutService.installShortcut(_downloadUrl!);
-                    },
-                    icon: const Icon(Icons.add_to_home_screen),
-                    label: const Text('ショートカットアプリを開く'),
+                    onPressed: _isLoading
+                        ? null
+                        : () async {
+                            setState(() {
+                              _isLoading = true;
+                              _errorMessage = null;
+                            });
+
+                            try {
+                              await ShortcutService.installShortcut(
+                                appId: widget.app.id,
+                                userId: 'test_user',
+                              );
+                              setState(() {
+                                _isLoading = false;
+                              });
+                            } catch (e) {
+                              // Extract clean error message without "Exception: " prefix
+                              String errorMsg = e.toString();
+                              if (errorMsg.startsWith('Exception: ')) {
+                                errorMsg = errorMsg.substring('Exception: '.length);
+                              }
+                              setState(() {
+                                _isLoading = false;
+                                _errorMessage = errorMsg;
+                              });
+                            }
+                          },
+                    icon: _isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.add_to_home_screen),
+                    label: Text(_isLoading ? '読み込み中...' : 'ショートカットをダウンロード'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: widget.app.color,
                       foregroundColor: Colors.white,
@@ -478,13 +548,9 @@ class _ShortcutSetupScreenState extends State<ShortcutSetupScreen> {
 
   Future<void> _handleNextButton() async {
     if (_currentStep == 0) {
-      // Step 1: Generate download URL
+      // Step 1: Move to install screen
       setState(() {
         _currentStep = 1;
-        _downloadUrl = ShortcutService.getShortcutDownloadUrl(
-          appId: widget.app.id,
-          userId: 'test_user', // TODO: Replace with actual user ID
-        );
       });
     } else if (_currentStep == 1) {
       // Step 2: Move to complete
